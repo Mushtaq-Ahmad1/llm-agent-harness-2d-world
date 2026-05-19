@@ -1,8 +1,18 @@
 """
 Convert a World into a JSON-friendly dict the browser can render.
-This is also a useful reference for what the human/UI needs to know.
+Also computes legal actions, which double as the agent's action menu.
 """
-from src.world import World, Terrain, Lever, Note
+from src.world import World, Terrain, Lever, Note, Box
+
+
+def _serialize_object(obj):
+    if isinstance(obj, Lever):
+        return {"type": "lever", "id": obj.id, "is_up": obj.is_up}
+    if isinstance(obj, Note):
+        return {"type": "note", "id": obj.id}
+    if isinstance(obj, Box):
+        return {"type": "box", "id": obj.id}
+    return {"type": "unknown"}
 
 
 def world_to_dict(world: World) -> dict:
@@ -11,24 +21,12 @@ def world_to_dict(world: World) -> dict:
         row = []
         for x in range(world.width):
             cell = world.grid[y][x]
-            cell_data = {
+            row.append({
                 "terrain": cell.terrain.name,
-                "objects": [],
+                "objects": [_serialize_object(o) for o in cell.objects],
                 "door_id": cell.door_id,
-            }
-            for obj in cell.objects:
-                if isinstance(obj, Lever):
-                    cell_data["objects"].append({
-                        "type": "lever",
-                        "id": obj.id,
-                        "is_up": obj.is_up,
-                    })
-                elif isinstance(obj, Note):
-                    cell_data["objects"].append({
-                        "type": "note",
-                        "id": obj.id,
-                    })
-            row.append(cell_data)
+                "plate_color": cell.plate_color,
+            })
         cells.append(row)
 
     return {
@@ -36,7 +34,7 @@ def world_to_dict(world: World) -> dict:
         "height": world.height,
         "cells": cells,
         "agent_pos": list(world.agent_pos),
-        "inventory": world.inventory,
+        "inventory": [_serialize_object(o) for o in world.inventory],
         "won": world.won,
         "doors": {
             door_id: {"locked": info["locked"]}
@@ -45,15 +43,10 @@ def world_to_dict(world: World) -> dict:
     }
 
 
-def legal_actions(world: World) -> list:
-    """
-    Compute what actions are currently legal from the agent's position.
-    Returns a list of action dicts the UI can render as buttons.
-    """
-    actions = []
+def movement_actions(world: World) -> list:
+    """All four move directions, each with a `legal` flag."""
     x, y = world.agent_pos
-
-    # Movement
+    out = []
     for direction, (dx, dy) in [
         ("north", (0, -1)),
         ("south", (0, 1)),
@@ -61,23 +54,50 @@ def legal_actions(world: World) -> list:
         ("west", (-1, 0)),
     ]:
         target = world.cell_at(x + dx, y + dy)
-        if target is not None and target.terrain != Terrain.WALL:
-            actions.append({"verb": "move", "args": [direction], "label": f"Move {direction}"})
+        legal = True
+        if target is None or target.terrain == Terrain.WALL:
+            legal = False
+        elif target.terrain == Terrain.DOOR_LOCKED:
+            legal = False
+        elif any(isinstance(obj, Box) for obj in target.objects):
+            legal = False
+        arrows = {"north": "↑", "south": "↓", "east": "→", "west": "←"}
+        out.append({"verb": "move", "args": [direction], "label": f"{arrows[direction]} {direction.title()}", "legal": legal})
+    return out
 
-    # Interactions with nearby objects
+
+def interaction_actions(world: World) -> list:
+    """All non-movement actions currently legal."""
+    actions = []
+    x, y = world.agent_pos
+
+    seen_ids = set()
     for dx, dy in [(0, 0), (0, -1), (0, 1), (1, 0), (-1, 0)]:
         cell = world.cell_at(x + dx, y + dy)
         if cell is None:
             continue
+        same_cell = (dx == 0 and dy == 0)
         for obj in cell.objects:
+            if obj.id in seen_ids:
+                continue
+            seen_ids.add(obj.id)
             if isinstance(obj, Lever):
-                actions.append({"verb": "flip", "args": [obj.id], "label": f"Flip {obj.id}"})
+                if same_cell:
+                    actions.append({"verb": "flip", "args": [obj.id], "label": f"Flip {obj.id}"})
             elif isinstance(obj, Note):
                 actions.append({"verb": "read", "args": [obj.id], "label": f"Read {obj.id}"})
+            elif isinstance(obj, Box):
+                actions.append({"verb": "inspect", "args": [obj.id], "label": f"Inspect {obj.id}"})
+                actions.append({"verb": "pick_up", "args": [obj.id], "label": f"Pick up {obj.id}"})
 
-    # Try doors (any door we know about)
-    for door_id, info in world.doors.items():
-        if info["locked"]:
-            actions.append({"verb": "open", "args": [door_id], "label": f"Try {door_id}"})
+    for obj in world.inventory:
+        if isinstance(obj, Box):
+            actions.append({"verb": "inspect", "args": [obj.id], "label": f"Inspect {obj.id} (held)"})
+            actions.append({"verb": "drop", "args": [obj.id], "label": f"Drop {obj.id}"})
 
     return actions
+
+
+def legal_actions(world: World) -> list:
+    """Combined list of currently-legal actions. Used by the LLM agent later."""
+    return [a for a in movement_actions(world) if a["legal"]] + interaction_actions(world)

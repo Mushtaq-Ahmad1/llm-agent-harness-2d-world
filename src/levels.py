@@ -1,20 +1,20 @@
 """
-Level definitions. Start tiny, expand later.
+Level definitions: a 3-room escape room.
+
+Room 1 (Level 1):  Binary-lever puzzle. Also contains box_1, which the agent
+                   must carry forward to solve Room 2.
+Room 2 (Level 2A): Pressure-plate puzzle. Three colored plates. Two boxes
+                   here, one already brought from Room 1.
+Room 3 (Level 2B): The exit.
 """
-from src.world import World, Cell, Terrain, Lever, Note
+from src.world import World, Cell, Terrain, Lever, Note, Box
 
 
-def build_level_1() -> World:
-    """
-    Single room, 10 wide x 8 tall.
-    Agent starts at (1, 6), exit is behind a binary-lever door at (5, 0).
-    8 levers along the south wall. Note on east wall says 'code: 170'.
-    170 in binary = 10101010, so levers 1,3,5,7 should be UP (0-indexed from the left).
-    """
-    width, height = 10, 8
+def build_world() -> World:
+    width, height = 14, 22
     grid = [[Cell(terrain=Terrain.FLOOR) for _ in range(width)] for _ in range(height)]
 
-    # Outer walls
+    # ----- Outer walls -----
     for x in range(width):
         grid[0][x].terrain = Terrain.WALL
         grid[height - 1][x].terrain = Terrain.WALL
@@ -22,42 +22,81 @@ def build_level_1() -> World:
         grid[y][0].terrain = Terrain.WALL
         grid[y][width - 1].terrain = Terrain.WALL
 
-    # The locked door at the top
-    door_x, door_y = 5, 0
-    grid[door_y][door_x].terrain = Terrain.DOOR_LOCKED
-    grid[door_y][door_x].door_id = "north_door"
+    # ----- Internal walls -----
+    for x in range(width):
+        grid[14][x].terrain = Terrain.WALL
+        grid[7][x].terrain = Terrain.WALL
 
-    # The exit just beyond would be off-map, so put exit IN the door cell
-    # Simpler: when door opens, walking through it puts you on exit
-    # Even simpler: place exit one row "above" by extending the map
-    # Let's just say walking through the door = win
-    # We do that by placing EXIT on the door cell after unlock... or just check won when stepping on opened door
+    # ----- Doors -----
+    grid[14][7].terrain = Terrain.DOOR_LOCKED
+    grid[14][7].door_id = "door_1"
 
-    # Binary levers along row 5, columns 1-8
+    grid[7][7].terrain = Terrain.DOOR_LOCKED
+    grid[7][7].door_id = "door_2"
+
+    # ----- Room 1: binary levers + a box -----
     lever_ids = [f"lever_{i}" for i in range(8)]
     for i, lid in enumerate(lever_ids):
-        grid[5][i + 1].objects.append(Lever(id=lid))
+        grid[18][i + 2].objects.append(Lever(id=lid))
 
-    # Note on east wall
-    grid[3][8].objects.append(Note(id="note_1", text="To unlock the door, set the levers to encode 170. Lever 0 is the least significant bit."))
+    grid[16][12].objects.append(Note(
+        id="note_levers",
+        text="To unlock door_1, set the levers to encode 170. Lever 0 is the least significant bit.",
+    ))
+
+    # The third box, hidden in Room 1. Agent must remember to take it.
+    grid[16][2].objects.append(Box(id="box_1", label="C"))
+
+    # ----- Room 2A: pressure plates + boxes + mapping note -----
+    grid[10][3].terrain = Terrain.PRESSURE_PLATE
+    grid[10][3].plate_color = "red"
+    grid[10][7].terrain = Terrain.PRESSURE_PLATE
+    grid[10][7].plate_color = "green"
+    grid[10][11].terrain = Terrain.PRESSURE_PLATE
+    grid[10][11].plate_color = "blue"
+
+    grid[12][6].objects.append(Box(id="box_2", label="A"))
+    grid[12][10].objects.append(Box(id="box_3", label="B"))
+
+    grid[9][12].objects.append(Note(
+        id="note_plates",
+        text="Place each labeled box on its matching plate to unlock door_2.",
+    ))
+
+    grid[11][1].objects.append(Note(
+        id="note_mapping",
+        text="Box→Plate mapping: A goes on red, B goes on green, C goes on blue. Inspect a box to see its label.",
+    ))
+
+    # ----- Room 2B: exit -----
+    grid[3][7].terrain = Terrain.EXIT
+    grid[4][11].objects.append(Note(
+        id="note_exit",
+        text="You made it. Step onto the exit tile to escape.",
+    ))
 
     world = World(
         width=width,
         height=height,
         grid=grid,
-        agent_pos=(1, 6),
+        agent_pos=(1, 19),
         doors={
-            "north_door": {
+            "door_1": {
                 "locked": True,
                 "puzzle": "binary_levers",
                 "target": 170,
                 "lever_ids": lever_ids,
-                "position": (door_x, door_y),
-            }
+                "position": (7, 14),
+            },
+            "door_2": {
+                "locked": True,
+                "puzzle": "pressure_plates",
+                "required": {"red": "A", "green": "B", "blue": "C"},
+                "position": (7, 7),
+            },
         },
     )
-    # Make stepping onto an opened door = winning, by also marking that cell EXIT once unlocked
-    # We'll handle that in try_open_door — set it to EXIT instead of DOOR_OPEN for the final door
-    # For simplicity in level 1, the door IS the exit:
-    world.doors["north_door"]["is_exit"] = True
     return world
+
+
+build_level_1 = build_world

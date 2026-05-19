@@ -19,6 +19,7 @@ class Terrain(Enum):
     DOOR_LOCKED = "D"
     DOOR_OPEN = "/"
     EXIT = "E"
+    PRESSURE_PLATE = "P"
 
 
 @dataclass
@@ -29,18 +30,28 @@ class Lever:
     def flip(self):
         self.is_up = not self.is_up
 
+@dataclass
+class Note:
+    id: str
+    text: str
 
 @dataclass
 class Note:
     id: str
     text: str
 
+@dataclass
+class Box:
+    id: str
+    label: str  # the secret label (A, B, C) — revealed by inspect
+    label_revealed: bool = False
 
 @dataclass
 class Cell:
     terrain: Terrain = Terrain.FLOOR
     objects: list = field(default_factory=list)
     door_id: Optional[str] = None  # if terrain is DOOR, which door
+    plate_color: Optional[str] = None  # for PRESSURE_PLATE cells
 
     @property
     def is_passable(self) -> bool:
@@ -49,7 +60,6 @@ class Cell:
         if self.terrain == Terrain.DOOR_LOCKED:
             return False
         return True
-
 
 @dataclass
 class World:
@@ -87,10 +97,15 @@ class World:
 
         if target is None:
             return {"success": False, "message": "You can't move off the map."}
+        # Can't walk through walls
         if target.terrain == Terrain.WALL:
             return {"success": False, "message": "A wall blocks your path."}
-        if target.terrain == Terrain.DOOR_LOCKED:
+        # Can't walk through locked doors
+        if target.terrain == Terrain.DOOR_LOCKED:         
             return {"success": False, "message": f"The door to the {direction} is locked."}
+        # Can't walk onto a cell occupied by a box
+        if any(isinstance(obj, Box) for obj in target.objects):
+            return {"success": False, "message": f"A box is in the way to the {direction}."}
 
         self.agent_pos = (nx, ny)
 
@@ -103,17 +118,18 @@ class World:
     def flip_lever(self, lever_id: str) -> dict:
         x, y = self.agent_pos
         cell = self.cell_at(x, y)
-        # Allow flipping levers in the current cell OR adjacent cells
-        candidates = [cell] + [self.cell_at(x + dx, y + dy) for dx, dy in [(0, -1), (0, 1), (1, 0), (-1, 0)]]
-        for c in candidates:
-            if c is None:
-                continue
-            for obj in c.objects:
-                if isinstance(obj, Lever) and obj.id == lever_id:
-                    obj.flip()
-                    state = "UP" if obj.is_up else "DOWN"
-                    return {"success": True, "message": f"You flipped {lever_id} to {state}."}
-        return {"success": False, "message": f"No lever named {lever_id} nearby."}
+        if cell is None:
+            return {"success": False, "message": "Nothing here."}
+        for obj in cell.objects:
+            if isinstance(obj, Lever) and obj.id == lever_id:
+                obj.flip()
+                state = "UP" if obj.is_up else "DOWN"
+                result = {"success": True, "message": f"You flipped {lever_id} to {state}."}
+                door_msgs = self._check_doors()
+                if door_msgs:
+                    result["message"] += " " + " ".join(door_msgs)
+                return result
+        return {"success": False, "message": f"No lever named {lever_id} on this cell."}
 
     def read(self, note_id: str) -> dict:
         x, y = self.agent_pos
@@ -124,39 +140,62 @@ class World:
                 continue
             for obj in c.objects:
                 if isinstance(obj, Note) and obj.id == note_id:
-                    return {"success": True, "message": f'The note reads: "{obj.text}"'}
-        return {"success": False, "message": f"No note named {note_id} nearby."}
+                    return {"success": True, "message": f'It reads: "{obj.text}"'}
+        return {"success": False, "message": f"Nothing to read named {note_id} nearby."}
 
-    def try_open_door(self, door_id: str) -> dict:
-        if door_id not in self.doors:
-            return {"success": False, "message": f"No door named {door_id}."}
-        info = self.doors[door_id]
-        if not info["locked"]:
-            return {"success": False, "message": f"{door_id} is already open."}
-
-        # Check puzzle
-        puzzle_name = info["puzzle"]
-        if puzzle_name == "binary_levers":
-            # The 8 levers should encode the target number
-            target = info["target"]
-            lever_ids = info["lever_ids"]
-            value = 0
-            for i, lid in enumerate(lever_ids):
-                lever = self._find_lever(lid)
-                if lever and lever.is_up:
-                    value += 2 ** i
-            if value == target:
+    def _check_doors(self) -> list:
+        """
+        Check all locked doors. Any whose puzzle is now satisfied get unlocked.
+        Returns a list of human-readable messages for any state changes.
+        """
+        messages = []
+        # Friendlier names for the demo
+        door_labels = {
+            "door_1": "the first door",
+            "door_2": "the second door",
+        }
+        for door_id, info in self.doors.items():
+            if not info["locked"]:
+                continue
+            if self._puzzle_solved(door_id, info):
                 info["locked"] = False
-                # Update terrain
                 dx, dy = info["position"]
                 if info.get("is_exit"):
                     self.grid[dy][dx].terrain = Terrain.EXIT
                 else:
                     self.grid[dy][dx].terrain = Terrain.DOOR_OPEN
-                return {"success": True, "message": f"The levers click into place. {door_id} unlocks!"}
-            return {"success": False, "message": f"Nothing happens. (Current lever value: {value})"}
+                label = door_labels.get(door_id, door_id)
+                messages.append(f"You have opened {label}. You may progress into the next room.")
+        return messages
 
-        return {"success": False, "message": f"Unknown puzzle type for {door_id}."}
+    def _puzzle_solved(self, door_id: str, info: dict) -> bool:
+        puzzle_name = info["puzzle"]
+        if puzzle_name == "binary_levers":
+            target = info["target"]
+            value = 0
+            for i, lid in enumerate(info["lever_ids"]):
+                lever = self._find_lever(lid)
+                if lever and lever.is_up:
+                    value += 2 ** i
+            return value == target
+        if puzzle_name == "pressure_plates":
+            required = info["required"]
+            for color, expected_label in required.items():
+                plate_cell = self._find_plate_cell(color)
+                if plate_cell is None:
+                    return False
+                box = next((o for o in plate_cell.objects if isinstance(o, Box)), None)
+                if box is None or box.label != expected_label:
+                    return False
+            return True
+        return False
+    
+    def _find_plate_cell(self, color: str) -> Optional[Cell]:
+        for row in self.grid:
+            for cell in row:
+                if cell.terrain == Terrain.PRESSURE_PLATE and cell.plate_color == color:
+                    return cell
+        return None
 
     def _find_lever(self, lever_id: str) -> Optional[Lever]:
         for row in self.grid:
@@ -165,3 +204,63 @@ class World:
                     if isinstance(obj, Lever) and obj.id == lever_id:
                         return obj
         return None
+    
+    def pick_up(self, obj_id: str) -> dict:
+        x, y = self.agent_pos
+        candidates = [self.cell_at(x, y)] + [
+            self.cell_at(x + dx, y + dy) for dx, dy in [(0, -1), (0, 1), (1, 0), (-1, 0)]
+        ]
+        for c in candidates:
+            if c is None:
+                continue
+            for obj in c.objects:
+                if isinstance(obj, Box) and obj.id == obj_id:
+                    c.objects.remove(obj)
+                    self.inventory.append(obj)
+                    result = {"success": True, "message": f"You picked up {obj_id}."}
+                    door_msgs = self._check_doors()
+                    if door_msgs:
+                        result["message"] += " " + " ".join(door_msgs)
+                    return result
+        return {"success": False, "message": f"Nothing to pick up named {obj_id} nearby."}
+
+    def drop(self, obj_id: str) -> dict:
+        # Find the box in inventory
+        obj = next((o for o in self.inventory if isinstance(o, Box) and o.id == obj_id), None)
+        if obj is None:
+            return {"success": False, "message": f"You aren't carrying {obj_id}."}
+
+        x, y = self.agent_pos
+        cell = self.cell_at(x, y)
+        # Don't allow stacking boxes
+        if any(isinstance(o, Box) for o in cell.objects):
+            return {"success": False, "message": "There's already a box here."}
+
+        self.inventory.remove(obj)
+        cell.objects.append(obj)
+
+        result = {"success": True, "message": f"You placed {obj_id} on the floor."}
+        door_msgs = self._check_doors()
+        if door_msgs:
+            result["message"] += " " + " ".join(door_msgs)
+        return result
+
+    def inspect(self, obj_id: str) -> dict:
+        # Check inventory
+        for obj in self.inventory:
+            if isinstance(obj, Box) and obj.id == obj_id:
+                obj.label_revealed = True
+                return {"success": True, "message": f"{obj_id} is labeled '{obj.label}'."}
+        # Check current and adjacent cells
+        x, y = self.agent_pos
+        candidates = [self.cell_at(x, y)] + [
+            self.cell_at(x + dx, y + dy) for dx, dy in [(0, -1), (0, 1), (1, 0), (-1, 0)]
+        ]
+        for c in candidates:
+            if c is None:
+                continue
+            for obj in c.objects:
+                if isinstance(obj, Box) and obj.id == obj_id:
+                    obj.label_revealed = True
+                    return {"success": True, "message": f"{obj_id} is labeled '{obj.label}'."}
+        return {"success": False, "message": f"Nothing to inspect named {obj_id} nearby."}

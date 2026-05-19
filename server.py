@@ -4,6 +4,9 @@ Flask server: serves the GUI and exposes the world via HTTP.
 from flask import Flask, jsonify, render_template, request
 from src.levels import build_level_1
 from src.serialize import world_to_dict, legal_actions
+from src.serialize import world_to_dict, movement_actions, interaction_actions, legal_actions
+
+
 
 app = Flask(__name__)
 
@@ -11,12 +14,13 @@ app = Flask(__name__)
 world = build_level_1()
 action_log = []
 
-
 def current_state():
     return {
         "world": world_to_dict(world),
+        "movement_actions": movement_actions(world),
+        "interaction_actions": interaction_actions(world),
         "legal_actions": legal_actions(world),
-        "log": action_log[-10:],  # last 10 messages
+        "log": action_log[-10:],
     }
 
 
@@ -43,8 +47,12 @@ def action():
         result = world.flip_lever(args[0])
     elif verb == "read":
         result = world.read(args[0])
-    elif verb == "open":
-        result = world.try_open_door(args[0])
+    elif verb == "pick_up":
+        result = world.pick_up(args[0])
+    elif verb == "drop":
+        result = world.drop(args[0])
+    elif verb == "inspect":
+        result = world.inspect(args[0])
     elif verb == "reset":
         world = build_level_1()
         action_log = []

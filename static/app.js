@@ -10,6 +10,13 @@ const colors = {
     DOOR_LOCKED: '#7a3a3a',
     DOOR_OPEN: '#3a7a3a',
     EXIT: '#3a7a3a',
+    PRESSURE_PLATE: '#1f1f3a'
+};
+
+const plateColors = {
+    red: '#a04040',
+    green: '#40a060',
+    blue: '#4060a0',
 };
 
 async function fetchState() {
@@ -28,7 +35,7 @@ async function doAction(verb, args) {
 }
 
 function render(state) {
-    const {world, legal_actions, log} = state;
+    const {world, log} = state;
 
     // Resize canvas to fit
     canvas.width = world.width * CELL;
@@ -40,6 +47,13 @@ function render(state) {
             const cell = world.cells[y][x];
             ctx.fillStyle = colors[cell.terrain] || '#000';
             ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+
+            // Tint pressure plates by color
+            if (cell.terrain === 'PRESSURE_PLATE' && cell.plate_color) {
+                ctx.fillStyle = plateColors[cell.plate_color] || '#888';
+                ctx.fillRect(x * CELL + 6, y * CELL + 6, CELL - 12, CELL - 12);
+            }
+
             ctx.strokeStyle = '#0a0a18';
             ctx.strokeRect(x * CELL, y * CELL, CELL, CELL);
 
@@ -57,6 +71,25 @@ function render(state) {
                     ctx.fillStyle = '#000';
                     ctx.font = 'bold 14px monospace';
                     ctx.fillText('?', x * CELL + 19, y * CELL + 28);
+                } else if (obj.type === 'box') {
+                    // Default brown wood color
+                    let fill = '#a07050';
+                    let stroke = '#604030';
+                    // Once inspected, color it to hint at its label
+                    if (obj.label_revealed && obj.label) {
+                        const labelToColor = {A: '#a04040', B: '#40a060', C: '#4060a0'};
+                        fill = labelToColor[obj.label] || fill;
+                        stroke = '#fff';
+                    }
+                    ctx.fillStyle = fill;
+                    ctx.fillRect(x * CELL + 8, y * CELL + 8, CELL - 16, CELL - 16);
+                    ctx.strokeStyle = stroke;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x * CELL + 8, y * CELL + 8, CELL - 16, CELL - 16);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '10px monospace';
+                    const tag = obj.label_revealed ? obj.label : obj.id.replace('box_', 'B');
+                    ctx.fillText(tag, x * CELL + 20, y * CELL + 30);
                 }
             }
         }
@@ -73,17 +106,32 @@ function render(state) {
     ctx.stroke();
 
     // Status
+    const inventoryText = world.inventory.length
+        ? world.inventory.map(o => o.id).join(', ')
+        : 'empty';
     document.getElementById('status').textContent =
-        `Position: (${ax}, ${ay})  |  Inventory: ${world.inventory.length ? world.inventory.join(', ') : 'empty'}  |  ${world.won ? '🎉 WON' : 'Playing'}`;
+        `Position: (${ax}, ${ay})  |  Inventory: ${inventoryText}  |  ${world.won ? '🎉 WON' : 'Playing'}`;
 
     // Action buttons
-    const actionsDiv = document.getElementById('actions');
-    actionsDiv.innerHTML = '';
-    for (const action of legal_actions) {
+    // Movement buttons — always rendered, dimmed if illegal
+    const moveDiv = document.getElementById('movement-actions');
+    moveDiv.innerHTML = '';
+    for (const action of state.movement_actions) {
+        const btn = document.createElement('button');
+        btn.textContent = action.label;
+        btn.disabled = !action.legal;
+        btn.onclick = () => doAction(action.verb, action.args);
+        moveDiv.appendChild(btn);
+    }
+
+    // Interaction buttons — only rendered when available
+    const interactionDiv = document.getElementById('interaction-actions');
+    interactionDiv.innerHTML = '';
+    for (const action of state.interaction_actions) {
         const btn = document.createElement('button');
         btn.textContent = action.label;
         btn.onclick = () => doAction(action.verb, action.args);
-        actionsDiv.appendChild(btn);
+        interactionDiv.appendChild(btn);
     }
 
     // Log
