@@ -1,11 +1,5 @@
 """
 Level definitions: a 3-room escape room.
-
-Room 1 (Level 1):  Binary-lever puzzle. Also contains box_1, which the agent
-                   must carry forward to solve Room 2.
-Room 2 (Level 2A): Pressure-plate puzzle. Three colored plates. Two boxes
-                   here, one already brought from Room 1.
-Room 3 (Level 2B): The exit.
 """
 from src.world import World, Cell, Terrain, Lever, Note, Box
 
@@ -34,20 +28,22 @@ def build_world() -> World:
     grid[7][7].terrain = Terrain.DOOR_LOCKED
     grid[7][7].door_id = "door_2"
 
-    # ----- Room 1: binary levers + a box -----
+    # ----- Room 1: binary levers, the safety lever, the box, notes -----
     lever_ids = [f"lever_{i}" for i in range(8)]
     for i, lid in enumerate(lever_ids):
         grid[18][i + 2].objects.append(Lever(id=lid))
 
-    grid[16][12].objects.append(Note(
+    # The isolated safety lever — far from the others
+    grid[16][12].objects.append(Lever(id="lever_safety"))
+
+    grid[20][12].objects.append(Note(
         id="note_levers",
-        text="To unlock door_1, set the levers to encode 170. Lever 0 is the least significant bit.",
+        text="To unlock door_1, set the levers 0-7 to encode 170. Lever 0 is the least significant bit.",
     ))
 
-    # The third box, hidden in Room 1. Agent must remember to take it.
     grid[16][2].objects.append(Box(id="box_1", label="C"))
 
-    # ----- Room 2A: pressure plates + boxes + mapping note -----
+    # ----- Room 2A: plates + boxes + notes -----
     grid[10][3].terrain = Terrain.PRESSURE_PLATE
     grid[10][3].plate_color = "red"
     grid[10][7].terrain = Terrain.PRESSURE_PLATE
@@ -60,21 +56,37 @@ def build_world() -> World:
 
     grid[9][12].objects.append(Note(
         id="note_plates",
-        text="Place each labeled box on its matching plate to unlock door_2.",
+        text="Place each labeled box on its matching plate to unlock door_2. Removing a box re-locks the door.",
     ))
 
     grid[11][1].objects.append(Note(
         id="note_mapping",
-        text="Box→Plate mapping: A goes on red, B goes on green, C goes on blue. Inspect a box to see its label.",
+        text="Box->Plate mapping: A goes on red, B goes on green, C goes on blue. Inspect a box to see its label.",
     ))
 
-    # ----- Room 2B: exit -----
-    grid[3][7].terrain = Terrain.EXIT
-    grid[4][11].objects.append(Note(
-        id="note_exit",
-        text="You made it. Step onto the exit tile to escape.",
+    # ----- Room 3: yellow plate + notes -----
+    grid[3][7].terrain = Terrain.PRESSURE_PLATE
+    grid[3][7].plate_color = "yellow"
+
+    # Exit door at the very top
+    grid[1][7].terrain = Terrain.DOOR_LOCKED
+    grid[1][7].door_id = "door_exit"
+
+    grid[5][3].objects.append(Note(
+        id="note_safety",
+        text=(
+            "An extra lever waits in the first room, set apart from the others. "
+            "Flipping it freezes the second door open, but only after you have read this. "
+            "Without it, removing a box will re-lock the door behind you."
+        ),
     ))
 
+    grid[5][11].objects.append(Note(
+        id="note_yellow",
+        text="Place any box on the yellow plate to open the exit at the top of this room.",
+    ))
+
+    # ----- Build the World -----
     world = World(
         width=width,
         height=height,
@@ -93,6 +105,12 @@ def build_world() -> World:
                 "puzzle": "pressure_plates",
                 "required": {"red": "A", "green": "B", "blue": "C"},
                 "position": (7, 7),
+            },
+            "door_exit": {
+                "locked": True,
+                "puzzle": "box_on_yellow",
+                "position": (7, 1),
+                "is_exit": True,
             },
         },
     )

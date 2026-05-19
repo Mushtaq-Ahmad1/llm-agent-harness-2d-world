@@ -17,6 +17,7 @@ const plateColors = {
     red: '#a04040',
     green: '#40a060',
     blue: '#4060a0',
+    yellow: '#c0a040'
 };
 
 async function fetchState() {

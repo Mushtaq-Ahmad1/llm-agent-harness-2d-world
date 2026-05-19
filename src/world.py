@@ -119,6 +119,20 @@ class World:
             return {"success": False, "message": "Nothing here."}
         for obj in cell.objects:
             if isinstance(obj, Lever) and obj.id == lever_id:
+                # Safety lever has special behaviour
+                if lever_id == "lever_safety":
+                    if not self.safety_armed:
+                        return {"success": False, "message": "The lever doesn't budge. It seems inert for now."}
+                    if self.safety_used:
+                        return {"success": False, "message": "The lever is locked in place — it has already been used."}
+                    obj.flip()
+                    self.safety_used = True
+                    door_msgs = self._check_doors()
+                    msg = "You flip the safety lever. You hear a deep click somewhere far above."
+                    if door_msgs:
+                        msg += " " + " ".join(door_msgs)
+                    return {"success": True, "message": msg}
+                # Normal lever
                 obj.flip()
                 state = "UP" if obj.is_up else "DOWN"
                 result = {"success": True, "message": f"You flipped {lever_id} to {state}."}
@@ -137,7 +151,11 @@ class World:
                 continue
             for obj in c.objects:
                 if isinstance(obj, Note) and obj.id == note_id:
-                    return {"success": True, "message": f'It reads: "{obj.text}"'}
+                    extra = ""
+                    if obj.id == "note_safety" and not self.safety_armed:
+                        self.safety_armed = True
+                        extra = " (You sense the extra lever in the first room now feels active.)"
+                    return {"success": True, "message": f'It reads: "{obj.text}"{extra}'}
         return {"success": False, "message": f"Nothing to read named {note_id} nearby."}
 
     def _check_doors(self) -> list:
@@ -198,6 +216,11 @@ class World:
                 if box is None or box.label != expected_label:
                     return False
             return True
+        if puzzle_name == "box_on_yellow":
+            plate_cell = self._find_plate_cell("yellow")
+            if plate_cell is None:
+                return False
+            return any(isinstance(o, Box) for o in plate_cell.objects)
         return False
     
     def _find_plate_cell(self, color: str) -> Optional[Cell]:

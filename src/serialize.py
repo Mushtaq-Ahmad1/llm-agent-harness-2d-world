@@ -11,7 +11,12 @@ def _serialize_object(obj):
     if isinstance(obj, Note):
         return {"type": "note", "id": obj.id}
     if isinstance(obj, Box):
-        return {"type": "box", "id": obj.id}
+        return {
+            "type": "box",
+            "id": obj.id,
+            "label_revealed": getattr(obj, "label_revealed", False),
+            "label": obj.label if getattr(obj, "label_revealed", False) else None,
+        }
     return {"type": "unknown"}
 
 
