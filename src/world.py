@@ -36,11 +36,6 @@ class Note:
     text: str
 
 @dataclass
-class Note:
-    id: str
-    text: str
-
-@dataclass
 class Box:
     id: str
     label: str  # the secret label (A, B, C) — revealed by inspect
@@ -71,6 +66,8 @@ class World:
     puzzle_state: dict = field(default_factory=dict)
     doors: dict = field(default_factory=dict)  # door_id -> {"locked": bool, "puzzle": str}
     won: bool = False
+    safety_armed: bool = False
+    safety_used: bool = False
 
     def cell_at(self, x: int, y: int) -> Optional[Cell]:
         if 0 <= x < self.width and 0 <= y < self.height:
@@ -145,27 +142,40 @@ class World:
 
     def _check_doors(self) -> list:
         """
-        Check all locked doors. Any whose puzzle is now satisfied get unlocked.
-        Returns a list of human-readable messages for any state changes.
+        Check every door against its puzzle. Transitions emit messages:
+          - locked + solved        -> unlock
+          - unlocked + not solved  -> re-lock
+        Special case: once safety lever has been used, door_2 stays unlocked.
         """
         messages = []
-        # Friendlier names for the demo
         door_labels = {
             "door_1": "the first door",
             "door_2": "the second door",
+            "door_exit": "the exit",
         }
         for door_id, info in self.doors.items():
-            if not info["locked"]:
-                continue
-            if self._puzzle_solved(door_id, info):
+            solved = self._puzzle_solved(door_id, info)
+
+            # Safety lever freezes door_2 open permanently
+            if door_id == "door_2" and self.safety_used:
+                solved = True
+
+            label = door_labels.get(door_id, door_id)
+            dx, dy = info["position"]
+
+            if info["locked"] and solved:
                 info["locked"] = False
-                dx, dy = info["position"]
                 if info.get("is_exit"):
                     self.grid[dy][dx].terrain = Terrain.EXIT
                 else:
                     self.grid[dy][dx].terrain = Terrain.DOOR_OPEN
-                label = door_labels.get(door_id, door_id)
-                messages.append(f"You have opened {label}. You may progress into the next room.")
+                messages.append(f"You have opened {label}.")
+
+            elif not info["locked"] and not solved:
+                info["locked"] = True
+                self.grid[dy][dx].terrain = Terrain.DOOR_LOCKED
+                messages.append(f"{label.capitalize()} re-locked behind you!")
+
         return messages
 
     def _puzzle_solved(self, door_id: str, info: dict) -> bool:
