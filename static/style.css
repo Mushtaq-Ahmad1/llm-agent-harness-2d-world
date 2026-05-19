@@ -1,0 +1,115 @@
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: -apple-system, system-ui, sans-serif;
+    background: #1a1a2e;
+    color: #e8e8f0;
+    min-height: 100vh;
+}
+
+header {
+    padding: 1rem 2rem;
+    background: #0f0f1e;
+    border-bottom: 1px solid #2a2a4a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.4rem;
+    letter-spacing: 0.05em;
+}
+
+#status {
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 0.9rem;
+    color: #a0a0c0;
+}
+
+main {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.5rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+#grid-container {
+    background: #0f0f1e;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+#grid {
+    display: block;
+    background: #050510;
+    border-radius: 4px;
+}
+
+#sidebar {
+    flex: 1;
+    min-width: 280px;
+}
+
+#sidebar h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #8080a0;
+    margin: 0 0 0.6rem 0;
+}
+
+#actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    margin-bottom: 1.5rem;
+}
+
+#actions button {
+    padding: 0.6rem;
+    background: #2a2a4a;
+    color: #e8e8f0;
+    border: 1px solid #3a3a5a;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.15s;
+}
+
+#actions button:hover {
+    background: #3a3a6a;
+}
+
+#log {
+    background: #0a0a18;
+    border: 1px solid #2a2a4a;
+    border-radius: 4px;
+    padding: 0.8rem;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 0.8rem;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+}
+
+#log div {
+    margin-bottom: 0.3rem;
+    color: #c0c0d8;
+}
+
+#reset {
+    width: 100%;
+    padding: 0.6rem;
+    background: #4a2a2a;
+    color: #e8e8f0;
+    border: 1px solid #6a3a3a;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#reset:hover { background: #6a3a3a; }
