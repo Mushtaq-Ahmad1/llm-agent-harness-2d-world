@@ -36,7 +36,7 @@ def build_world() -> World:
     # The isolated safety lever — far from the others
     grid[16][12].objects.append(Lever(id="lever_safety"))
 
-    grid[20][12].objects.append(Note(
+    grid[19][3].objects.append(Note(
         id="note_levers",
         text="To unlock door_1, set the levers 0-7 to encode 170. Lever 0 is the least significant bit.",
     ))
@@ -54,12 +54,12 @@ def build_world() -> World:
     grid[12][6].objects.append(Box(id="box_2", label="A"))
     grid[12][10].objects.append(Box(id="box_3", label="B"))
 
-    grid[9][12].objects.append(Note(
+    grid[9][10].objects.append(Note(
         id="note_plates",
         text="Place each labeled box on its matching plate to unlock door_2. Removing a box re-locks the door.",
     ))
 
-    grid[11][1].objects.append(Note(
+    grid[11][4].objects.append(Note(
         id="note_mapping",
         text="Box->Plate mapping: A goes on red, B goes on green, C goes on blue. Inspect a box to see its label.",
     ))
