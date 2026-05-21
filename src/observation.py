@@ -31,6 +31,7 @@ def build_observation(
     x, y = world.agent_pos
     reachable = _reachable_cells(world)
 
+    parts.append(f"YOU ARE IN: {_agent_room(world)}")
     parts.append(f"YOUR INVENTORY: {_describe_inventory(world)}\n")
     parts.append(f"YOUR POSITION: ({x}, {y})  (x increases east, y increases south)")
     parts.append(f"REACHABLE CELLS FROM HERE: {len(reachable)} (objects outside this are blocked by walls or locked doors)")
@@ -83,9 +84,15 @@ def build_observation(
     parts.append("")
 
     parts.append("DOOR STATUS:")
+    door_destinations = {
+        "door_1": "Room 1 -> Room 2",
+        "door_2": "Room 2 -> Room 3",
+        "door_exit": "exit door",
+    }
     for door_id, info in world.doors.items():
         state = "LOCKED" if info["locked"] else "OPEN"
-        parts.append(f"  - {door_id} at {info['position']}: {state}")
+        dest = door_destinations.get(door_id, "")
+        parts.append(f"  - {door_id} at {info['position']}: {state} ({dest})")
     parts.append("")
 
     parts.append("YOUR NOTES (scratchpad):")
@@ -217,7 +224,17 @@ def _nearby_objects(world: World, reachable: set, radius: int = 5) -> list:
             elif cell.terrain == Terrain.DOOR_LOCKED:
                 found.append(f"locked door '{cell.door_id}' at ({x},{y})")
             elif cell.terrain == Terrain.DOOR_OPEN:
-                found.append(f"open door '{cell.door_id}' at ({x},{y})")
+                ax, ay = world.agent_pos
+                if x == ax and y == ay:
+                    hint = " - you're standing on it; walk through"
+                else:
+                    parts_hint = []
+                    if x > ax: parts_hint.append(f"{x-ax} east")
+                    if x < ax: parts_hint.append(f"{ax-x} west")
+                    if y > ay: parts_hint.append(f"{y-ay} south")
+                    if y < ay: parts_hint.append(f"{ay-y} north")
+                    hint = f" - walk {' then '.join(parts_hint)} to reach it"
+                found.append(f"OPEN door '{cell.door_id}' at ({x},{y}){hint}{reach_tag}")
             elif cell.terrain == Terrain.EXIT:
                 found.append(f"EXIT tile at ({x},{y})")
             # Objects (skip boxes already mentioned via their plate)
@@ -226,12 +243,19 @@ def _nearby_objects(world: World, reachable: set, radius: int = 5) -> list:
                     continue
                 if isinstance(obj, Lever):
                     state = "UP" if obj.is_up else "DOWN"
-                    found.append(f"lever '{obj.id}' at ({x},{y}), currently {state}")
+                    on_lever = (x == ax and y == ay)
+                    interact_tag = " [stand here to flip]" if on_lever else f" [walk to ({x},{y}) to flip]"
+                    found.append(f"lever '{obj.id}' at ({x},{y}), currently {state}{interact_tag}")
                 elif isinstance(obj, Note):
-                    found.append(f"note '{obj.id}' at ({x},{y}) — read it to learn more")
+                    is_adjacent = (abs(x - ax) + abs(y - ay)) <= 1
+                    interact_tag = " [can read from here]" if is_adjacent else f" [walk to ({x},{y}) first]"
+                    found.append(f"note '{obj.id}' at ({x},{y}) - read it to learn more{interact_tag}")
                 elif isinstance(obj, Box):
                     label = f"label {obj.label}" if obj.label_revealed else "label unknown (inspect to see)"
-                    found.append(f"box '{obj.id}' at ({x},{y}), {label}")
+                    # Tag whether the agent can interact with it from current position
+                    is_adjacent = (abs(x - ax) + abs(y - ay)) <= 1
+                    interact_tag = " [can pick_up/inspect from here]" if is_adjacent else f" [walk to ({x},{y}) first]"
+                    found.append(f"box '{obj.id}' at ({x},{y}), {label}{interact_tag}{reach_tag}")
     return found
 
 def _puzzle_progress(world: World) -> list:
@@ -264,7 +288,9 @@ def _puzzle_progress(world: World) -> list:
     return lines
 
 def _reachable_cells(world: World) -> set:
-    """BFS from agent position. Returns set of (x, y) reachable without
+
+    """
+    BFS from agent position. Returns set of (x, y) reachable without
     crossing walls or locked doors. Used to flag objects the agent
     can SEE but cannot actually walk to."""
     start = world.agent_pos
@@ -286,3 +312,13 @@ def _reachable_cells(world: World) -> set:
             seen.add((nx, ny))
             q.append((nx, ny))
     return seen
+
+def _agent_room(world: World) -> str:
+    _, y = world.agent_pos
+    if y > 14:
+        return "Room 1 (the start room, with the binary levers)"
+    elif y > 7:
+        return "Room 2 (the middle room, with the colored pressure plates)"
+    else:
+        return "Room 3 (the final room, with the exit)"
+    

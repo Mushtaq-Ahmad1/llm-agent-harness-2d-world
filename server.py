@@ -1,18 +1,27 @@
 """
 Flask server: serves the GUI and exposes the world via HTTP.
 """
+from src.agent import Agent
 from flask import Flask, jsonify, render_template, request
 from src.levels import build_level_1
 from src.serialize import world_to_dict, legal_actions
 from src.serialize import world_to_dict, movement_actions, interaction_actions, legal_actions
-
-
 
 app = Flask(__name__)
 
 # Single global world for now. Fine for one-player local dev.
 world = build_level_1()
 action_log = []
+agent: Agent = None                           
+AGENT_MAX_STEPS = 100 
+
+def ensure_agent(model: str = "claude-sonnet-4-5"):   
+    """Lazily create the agent on first use, so we don't spend money
+    on an Anthropic client we never actually use."""
+    global agent
+    if agent is None:
+        agent = Agent(model=model)
+    return agent
 
 def current_state():
     return {
@@ -54,7 +63,9 @@ def action():
     elif verb == "inspect":
         result = world.inspect(args[0])
     elif verb == "reset":
+        global agent
         world = build_level_1()
+        agent = None
         action_log = []
         result = {"success": True, "message": "World reset."}
     else:

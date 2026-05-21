@@ -21,6 +21,8 @@ The world has rooms separated by locked doors. Each door is gated by a puzzle, a
 
 Each turn you get an observation with: your position, what's around you, your scratchpad, recent events, and currently-legal actions. Call EXACTLY ONE action tool.
 
+When moving between rooms, look at the door's coordinates in DOOR STATUS or OPEN door entries in VISIBLE OBJECTS — they tell you exactly where to walk to transition rooms.
+
 RULES (most important first):
 
 1. THE OBSERVATION IS GROUND TRUTH. Your INVENTORY, POSITION, and PUZZLE PROGRESS sections are computed from the actual world state every turn. If your scratchpad says one thing and the observation says another, the OBSERVATION is correct and your scratchpad is stale. Use `remember` to write down NEW facts you've derived, never to record current state — that's already in the observation.
@@ -119,7 +121,7 @@ TOOLS = [
     },
     {
         "name": "remember",
-        "description": "Write a SHORT note to your persistent scratchpad. Only record DERIVED facts (the binary code is 170, A→red B→green C→blue). Do NOT record current state like position or inventory — those are in every observation. Long notes become stale; one line per fact.",
+        "description": "Write a SHORT note to your persistent scratchpad. Only record DERIVED facts (the binary code is 170, A->d B->green C->blue). Do NOT record current state like position or inventory — those are in every observation. Long notes become stale; one line per fact.",
         "input_schema": {            
             "type": "object",
             "properties": {"text": {"type": "string"}},

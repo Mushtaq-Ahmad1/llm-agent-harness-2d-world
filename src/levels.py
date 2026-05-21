@@ -58,7 +58,6 @@ def build_world() -> World:
         id="note_plates",
         text="Place each labeled box on its matching plate to unlock door_2. Removing a box re-locks the door.",
     ))
-
     grid[11][4].objects.append(Note(
         id="note_mapping",
         text="Box->Plate mapping: A goes on red, B goes on green, C goes on blue. Inspect a box to see its label.",
@@ -83,7 +82,7 @@ def build_world() -> World:
 
     grid[5][11].objects.append(Note(
         id="note_yellow",
-        text="Place any box on the yellow plate to open the exit at the top of this room.",
+        text="Place any box on the yellow plate to open the exit. WARNING: removing a box from its colored plate will re-lock door_2. Look around this room for another note about how to safely move boxes.",
     ))
 
     # ----- Build the World -----

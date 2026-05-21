@@ -148,5 +148,70 @@ function render(state) {
 
 document.getElementById('reset').onclick = () => doAction('reset', []);
 
+// ---- Agent live runner ----
+
+let agentRunning = false;
+const STEP_DELAY_MS = 1500;  // pause between steps so you can see each one
+
+async function agentStep() {
+    const res = await fetch('/agent_step', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({}),
+    });
+    const state = await res.json();
+    render(state);
+    renderAgent(state.agent);
+    return state.agent;
+}
+
+function renderAgent(agent) {
+    if (!agent) return;
+    const status = document.getElementById('agent-status');
+    const thought = document.getElementById('agent-thought');
+    const scratchpad = document.getElementById('agent-scratchpad');
+
+    const verb = agent.action ? agent.action.verb : '(no action)';
+    const args = agent.action ? JSON.stringify(agent.action.args) : '';
+    status.textContent = `Turn ${agent.turn}: ${verb}${args ? ' ' + args : ''}`;
+    thought.textContent = agent.thought || '(no thought)';
+
+    scratchpad.innerHTML = '';
+    for (const note of (agent.scratchpad || [])) {
+        const div = document.createElement('div');
+        div.className = 'scratchpad-entry';
+        div.textContent = note;
+        scratchpad.appendChild(div);
+    }
+}
+
+document.getElementById('agent-step').onclick = async () => {
+    await agentStep();
+};
+
+document.getElementById('agent-run').onclick = async () => {
+    if (agentRunning) return;
+    agentRunning = true;
+    document.getElementById('agent-run').disabled = true;
+    document.getElementById('agent-step').disabled = true;
+    document.getElementById('agent-stop').disabled = false;
+
+    while (agentRunning) {
+        const agent = await agentStep();
+        if (!agent || agent.done) break;
+        await new Promise(r => setTimeout(r, STEP_DELAY_MS));
+    }
+
+    agentRunning = false;
+    document.getElementById('agent-run').disabled = false;
+    document.getElementById('agent-step').disabled = false;
+    document.getElementById('agent-stop').disabled = true;
+};
+
+document.getElementById('agent-stop').onclick = () => {
+    agentRunning = false;
+};
+
 // Initial load
 fetchState().then(render);
+

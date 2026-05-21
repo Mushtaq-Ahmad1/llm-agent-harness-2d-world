@@ -157,3 +157,84 @@ main {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+#agent-controls {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+
+#agent-controls button {
+    flex: 1;
+    padding: 0.5rem;
+    background: #2a4a2a;
+    color: #e8e8f0;
+    border: 1px solid #3a6a3a;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+#agent-controls button:hover:not(:disabled) {
+    background: #3a6a3a;
+}
+
+#agent-controls button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+#agent-status {
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 0.85rem;
+    color: #a0a0c0;
+    padding: 0.4rem 0.6rem;
+    background: #0a0a18;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+#agent-thought {
+    font-size: 0.8rem;
+    color: #c8c8d8;
+    background: #0a0a18;
+    border-left: 3px solid #4060a0;
+    padding: 0.6rem 0.8rem;
+    border-radius: 0 4px 4px 0;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+    white-space: pre-wrap;
+}
+
+#agent-thought:empty {
+    display: none;
+}
+
+#agent-scratchpad-section h3 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #8080a0;
+    margin: 0 0 0.4rem 0;
+}
+
+#agent-scratchpad {
+    background: #0a0a18;
+    border-radius: 4px;
+    padding: 0.6rem;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 0.75rem;
+    color: #c8c8d8;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.scratchpad-entry {
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #1a1a3a;
+}
+
+.scratchpad-entry:last-child {
+    border-bottom: none;
+}

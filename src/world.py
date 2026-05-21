@@ -96,7 +96,19 @@ class World:
             return {"success": False, "message": "You can't move off the map."}
         # Can't walk through walls
         if target.terrain == Terrain.WALL:
-            return {"success": False, "message": "A wall blocks your path."}
+            # Helpful hint: are there open doors or floor cells just to the sides?
+            hints = []
+            for label, (dx2, dy2) in [
+                ("east", (1, 0)),
+                ("west", (-1, 0)),
+            ]:
+                near = self.cell_at(x + dx2, y + dy2)
+                if near and near.terrain == Terrain.DOOR_OPEN:
+                    hints.append(f"there's an open door one cell {label}")
+                elif near and near.terrain == Terrain.DOOR_LOCKED:
+                    hints.append(f"there's a locked door one cell {label}")
+            extra = f" ({'; '.join(hints)})" if hints else ""
+            return {"success": False, "message": f"A wall blocks your path.{extra}"}
         # Can't walk through locked doors
         if target.terrain == Terrain.DOOR_LOCKED:         
             return {"success": False, "message": f"The door to the {direction} is locked."}
