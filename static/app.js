@@ -146,7 +146,18 @@ function render(state) {
     logDiv.scrollTop = logDiv.scrollHeight;
 }
 
-document.getElementById('reset').onclick = () => doAction('reset', []);
+document.getElementById('reset').onclick = async () => {
+    await doAction('reset', []);
+    // Also reset the agent so the next step is a fresh run
+    await fetch('/agent_reset', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ model: document.getElementById('model-select').value }),
+    });
+    document.getElementById('agent-status').textContent = 'Idle';
+    document.getElementById('agent-thought').textContent = '';
+    document.getElementById('agent-scratchpad').innerHTML = '';
+};
 
 // ---- Agent live runner ----
 
@@ -154,10 +165,11 @@ let agentRunning = false;
 const STEP_DELAY_MS = 1500;  // pause between steps so you can see each one
 
 async function agentStep() {
+    const model = document.getElementById('model-select').value;
     const res = await fetch('/agent_step', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({}),
+        body: JSON.stringify({ model: model }),
     });
     const state = await res.json();
     render(state);
@@ -211,6 +223,11 @@ document.getElementById('agent-run').onclick = async () => {
 document.getElementById('agent-stop').onclick = () => {
     agentRunning = false;
 };
+
+document.getElementById('model-select').addEventListener('change', () => {
+    // Reset world and agent when model changes
+    document.getElementById('reset').click();
+});
 
 // Initial load
 fetchState().then(render);

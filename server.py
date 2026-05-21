@@ -14,6 +14,7 @@ world = build_level_1()
 action_log = []
 agent: Agent = None                           
 AGENT_MAX_STEPS = 100 
+agent_turn_count = 0
 
 def ensure_agent(model: str = "claude-sonnet-4-5"):   
     """Lazily create the agent on first use, so we don't spend money
@@ -73,6 +74,52 @@ def action():
 
     action_log.append(result["message"])
     return jsonify(current_state())
+
+@app.route('/agent_step', methods=['POST'])
+def agent_step():
+    global world, action_log, agent_turn_count
+    data = request.get_json() or {}
+    model = data.get('model', 'claude-sonnet-4-5')
+    agent_instance = ensure_agent(model)
+    
+    # Check the cap BEFORE stepping
+    if agent_turn_count >= AGENT_MAX_STEPS:
+        state = current_state()
+        state['agent'] = {
+            'turn': agent_turn_count,
+            'done': True,
+            'thought': f'Reached max steps ({AGENT_MAX_STEPS}). Agent stopped.',
+            'action': None,
+            'scratchpad': agent_instance.scratchpad if hasattr(agent_instance, 'scratchpad') else [],
+        }
+        return jsonify(state)
+    
+    # Take one agent step
+    result = agent_instance.step(world)
+    agent_turn_count += 1
+    
+    # Mark done if we've hit the cap OR the agent won
+    if agent_turn_count >= AGENT_MAX_STEPS or world.won:
+        result['done'] = True
+    
+    if result.get('action'):
+        verb = result['action']['verb']
+        args = result['action']['args']
+        action_log.append(f"Agent turn {result['turn']}: {verb}({args})")
+    
+    state = current_state()
+    state['agent'] = result
+    return jsonify(state)
+
+
+@app.route('/agent_reset', methods=['POST'])
+def agent_reset():
+    global agent, agent_turn_count
+    data = request.get_json() or {}
+    model = data.get('model', 'claude-sonnet-4-5')
+    agent = Agent(model=model)
+    agent_turn_count = 0    # NEW
+    return jsonify({"ok": True, "model": model})
 
 
 if __name__ == "__main__":

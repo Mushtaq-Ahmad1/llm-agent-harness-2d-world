@@ -29,6 +29,17 @@
             <button id="reset">Reset</button>
 
             <h2>Agent</h2>
+            <div class="model-selector">
+            <label for="model-select">Model:</label>
+            <select id="model-select">
+                <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+                <option value="claude-sonnet-4-5" selected>Claude Sonnet 4.5</option>
+                <option value="claude-opus-4-7">Claude Opus 4.7</option>
+            </select>
+            </div>
+
+
+            <h2>Agent</h2>
             <div id="agent-controls">
                 <button id="agent-step">Step Once</button>
                 <button id="agent-run">Run Until Done</button>
