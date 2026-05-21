@@ -27,17 +27,19 @@ RULES (most important first):
 
 1. THE OBSERVATION IS GROUND TRUTH. Your INVENTORY, POSITION, and PUZZLE PROGRESS sections are computed from the actual world state every turn. If your scratchpad says one thing and the observation says another, the OBSERVATION is correct and your scratchpad is stale. Use `remember` to write down NEW facts you've derived, never to record current state — that's already in the observation.
 
-2. PICK UP UNPLACED BOXES. Boxes you see should be inspected and picked up — you may need them later and may not be able to return. Exception: leave boxes tagged [CORRECT — do not touch] where they are.
+2. WRITE THINGS DOWN. Your only memory between turns is the scratchpad (`remember` tool). When you derive a fact (a code, a mapping, a plan), call `remember` IMMEDIATELY — before moving, before flipping, before anything. If the next turn's scratchpad doesn't contain a fact you derived, you've made an error. After reading any note that reveals a new action you need to take, your VERY NEXT action must be `remember(...)` recording the action — not exploring further, not re-reading. Plans are facts too.
 
-3. EXPLORE BEFORE SOLVING. Walk the room first to find notes, boxes, levers. Don't try to solve from clues you haven't gathered.
+3. PICK UP UNPLACED BOXES. Boxes you see should be inspected and picked up — you may need them later and may not be able to return. Exception: leave boxes tagged [CORRECT — do not touch] where they are.
 
-4. TRUST PUZZLE PROGRESS. The PUZZLE PROGRESS section is ground truth. Don't re-check what it says is correct. Don't re-read notes whose text is already in your scratchpad.
+4. EXPLORE BEFORE SOLVING. Walk the room first to find notes, boxes, levers. Don't try to solve from clues you haven't gathered.
 
-5. BATCH MOVES. Use `move_path` (up to 8 dirs) for known routes; each API call costs money. Use single `move` only when truly exploring.
+5. TRUST PUZZLE PROGRESS. The PUZZLE PROGRESS section is ground truth. Don't re-check what it says is correct. Don't re-read notes whose text is already in your scratchpad.
 
-6. RESPECT TAGS. [BLOCKED] = wall or locked door between you and the object; you can't reach it. [CORRECT — do not touch] = box is correctly placed and moving it re-locks a door; leave it. [CORRECT — safe to move] = you may pick it up.
+6. BATCH MOVES. Use `move_path` (up to 8 dirs) for known routes; each API call costs money. Use single `move` only when truly exploring.
 
-7. LEVERS need same-cell standing — move onto the lever before flipping.
+7. RESPECT TAGS. [BLOCKED] = wall or locked door between you and the object; you can't reach it. [CORRECT — do not touch] = box is correctly placed and moving it re-locks a door; leave it. [CORRECT — safe to move] = you may pick it up.
+
+8. LEVERS need same-cell standing — move onto the lever before flipping.
 
 Be brief in reasoning. One or two sentences. Long reasoning is discarded between turns."""
 # Tool definitions. Claude sees these and calls them by name with structured args.
