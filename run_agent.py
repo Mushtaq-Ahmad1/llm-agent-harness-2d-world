@@ -4,8 +4,6 @@ Use this to test the agent loop before adding the GUI.
 """
 import sys
 import io
-import sys
-import io
 # Force stdout/stderr to UTF-8 so arrow characters and emojis in agent
 # output don't crash on Windows (which defaults to cp1252).
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -15,7 +13,6 @@ from src.levels import build_world
 from src.agent import Agent
 
 MAX_STEPS = 100
-
 
 import sys
 from datetime import datetime

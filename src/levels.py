@@ -114,6 +114,3 @@ def build_world() -> World:
         },
     )
     return world
-
-
-build_level_1 = build_world

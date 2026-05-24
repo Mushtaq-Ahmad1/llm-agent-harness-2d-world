@@ -85,9 +85,9 @@ The agent perceives the world through a text observation built fresh each turn, 
 
 **Loop detection.** The harness watches for three failure patterns and injects warnings into the observation when they fire: exact action repeated 3+ times in 4 turns, eight consecutive movement actions without interaction, and the same object touched 4+ times in 6 turns. These nudges helped, but didn't eliminate, the looping behaviours described in the next section.
 
-## How three models performed
+## How the three models performed
 
-I ran the harness against three Claude models — Haiku 4.5, Sonnet 4.5, and Opus 4.7 — and watched each fail in a different way. The interesting finding wasn't that the bigger models got further (they did), but that *the kind of failure changed* as model capability increased. The three runs trace a rough arc from perception, to reasoning, to execution.
+I ran the harness against three Claude models — Haiku 4.5, Sonnet 4.5, and Opus 4.7 — and watched each fail in a different way. The interesting finding wasn't that the bigger models got further (they did), but that *the kind of failure changed* as model capability increased. The three runs trace a rough arc from perception, to reasoning, to execution. Each run shown here is one sample; LLM agents are non-deterministic, and the same model on the same prompt will not produce identical behaviour on different runs.
 
 ### Haiku 4.5 — perception failure
 

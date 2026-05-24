@@ -3,14 +3,14 @@ Flask server: serves the GUI and exposes the world via HTTP.
 """
 from src.agent import Agent
 from flask import Flask, jsonify, render_template, request
-from src.levels import build_level_1
+from src.levels import build_world
 from src.serialize import world_to_dict, legal_actions
 from src.serialize import world_to_dict, movement_actions, interaction_actions, legal_actions
 
 app = Flask(__name__)
 
 # Single global world for now. Fine for one-player local dev.
-world = build_level_1()
+world = build_world()
 action_log = []
 agent: Agent = None                           
 AGENT_MAX_STEPS = 100 
@@ -46,7 +46,7 @@ def state():
 
 @app.route("/action", methods=["POST"])
 def action():
-    global world, action_log
+    global world, action_log, agent_turn_count
     data = request.get_json()
     verb = data.get("verb")
     args = data.get("args", [])
@@ -65,9 +65,10 @@ def action():
         result = world.inspect(args[0])
     elif verb == "reset":
         global agent
-        world = build_level_1()
+        world = build_world()()
         agent = None
         action_log = []
+        agent_turn_count = 0
         result = {"success": True, "message": "World reset."}
     else:
         result = {"success": False, "message": f"Unknown verb: {verb}"}
