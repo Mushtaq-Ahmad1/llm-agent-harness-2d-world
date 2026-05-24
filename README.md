@@ -10,9 +10,9 @@ Three short clips, one per model, showing the agent attempting the puzzle:
 
 - [Claude Haiku 4.5](docs/Clips/Haiku_run.mp4)
 - [Claude Sonnet 4.5](docs/Clips/Sonnet_run.mp4)
-- Claude Opus 4.7 _(recording pending — see [text log](logs/Opus_demo_runs/))_
+- [Claude Opus 4.7](docs/Clips/Opus_run.mp4)
 
-Each clip is sped up roughly 8× for watchability. The full text logs of each run are in [`logs/`](logs/).
+Each clip is sped up for watchability. The full text logs of each run are in [`logs/`](logs/).
 
 ## Quick start
 
